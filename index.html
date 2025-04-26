@@ -1,1 +1,1338 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEET/JEE Progress Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* Base Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f7fa;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .date-display {
+            color: #7f8c8d;
+            font-size: 1.1em;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #7f8c8d;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+            font-weight: bold;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .confidence-rating {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .confidence-rating input[type="radio"] {
+            display: none;
+        }
+
+        .confidence-rating label {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            background-color: #ecf0f1;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .confidence-rating input[type="radio"]:checked + label {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .attachment-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        #attachmentPreview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .attachment-thumbnail {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .attachment-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .attachment-thumbnail button {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            background-color: rgba(231, 76, 60, 0.8);
+            border-radius: 50%;
+            font-size: 12px;
+            line-height: 20px;
+        }
+
+        /* Calculator Styles */
+        #calculator-container {
+            display: none;
+            max-width: 320px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #2c3e50;
+            border-radius: 10px;
+        }
+
+        #calculator-container.active {
+            display: block;
+        }
+
+        .calculator {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        #calculator-display {
+            grid-column: span 4;
+            padding: 10px;
+            text-align: right;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 24px;
+            height: 40px;
+            overflow: hidden;
+        }
+
+        #previous-display {
+            grid-column: span 4;
+            text-align: right;
+            color: #bdc3c7;
+            height: 20px;
+            font-size: 14px;
+        }
+
+        .calculator-btn {
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #34495e;
+            color: white;
+        }
+
+        .calculator-btn.operation {
+            background-color: #3498db;
+        }
+
+        .calculator-btn.equals {
+            background-color: #2ecc71;
+            grid-column: span 2;
+        }
+
+        .calculator-btn.clear {
+            background-color: #e74c3c;
+        }
+
+        /* Resources Section */
+        .resource-category {
+            margin-bottom: 30px;
+        }
+
+        .resource-category h3 {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .resource-item {
+            background-color: white;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .resource-item h4 {
+            margin-top: 0;
+            color: #3498db;
+        }
+
+        /* Notes Section */
+        .notes-controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .notes-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .note-card {
+            background-color: white;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .note-date {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .note-subject {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+        }
+
+        .note-topic {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .note-attachments {
+            margin-top: 10px;
+        }
+
+        .note-attachments img {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 3px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .tabs {
+                overflow-x: auto;
+            }
+            
+            .tab-btn {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+
+            .notes-list {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>NEET/JEE Progress Tracker</h1>
+            <div class="date-display" id="currentDate"></div>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="today">Today's Progress</button>
+            <button class="tab-btn" data-tab="tomorrow">Tomorrow's Plan</button>
+            <button class="tab-btn" data-tab="resources">Study Resources</button>
+            <button class="tab-btn" data-tab="calculator">Calculator</button>
+            <button class="tab-btn" data-tab="notes">My Notes</button>
+        </div>
+
+        <div class="tab-content active" id="today">
+            <form id="progressForm">
+                <div class="form-group">
+                    <label for="subject">Subject</label>
+                    <select id="subject" required>
+                        <option value="">Select Subject</option>
+                        <option value="physics">Physics</option>
+                        <option value="chemistry">Chemistry</option>
+                        <option value="mathematics">Mathematics</option>
+                        <option value="biology">Biology</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="topic">Topic</label>
+                    <select id="topic" required disabled>
+                        <option value="">Select Topic</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="learnings">Key Learnings Today</label>
+                    <textarea id="learnings" rows="5" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Confidence Level (1-5)</label>
+                    <div class="confidence-rating">
+                        <input type="radio" name="confidence" id="conf1" value="1">
+                        <label for="conf1">1</label>
+                        <input type="radio" name="confidence" id="conf2" value="2">
+                        <label for="conf2">2</label>
+                        <input type="radio" name="confidence" id="conf3" value="3" checked>
+                        <label for="conf3">3</label>
+                        <input type="radio" name="confidence" id="conf4" value="4">
+                        <label for="conf4">4</label>
+                        <input type="radio" name="confidence" id="conf5" value="5">
+                        <label for="conf5">5</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Attach Notes/Photos</label>
+                    <div class="attachment-options">
+                        <button type="button" id="uploadBtn">Upload File</button>
+                        <button type="button" id="cameraBtn">Use Camera</button>
+                        <input type="file" id="fileInput" accept="image/*" multiple style="display: none;">
+                        <video id="cameraView" style="display: none;" autoplay></video>
+                        <button type="button" id="captureBtn" style="display: none;">Capture</button>
+                    </div>
+                    <div id="attachmentPreview"></div>
+                </div>
+
+                <button type="submit" class="submit-btn">Save Progress</button>
+            </form>
+        </div>
+
+        <div class="tab-content" id="tomorrow">
+            <form id="planForm">
+                <div class="form-group">
+                    <label for="planSubject">Subject</label>
+                    <select id="planSubject" required>
+                        <option value="">Select Subject</option>
+                        <option value="physics">Physics</option>
+                        <option value="chemistry">Chemistry</option>
+                        <option value="mathematics">Mathematics</option>
+                        <option value="biology">Biology</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="planTopic">Topic</label>
+                    <select id="planTopic" required disabled>
+                        <option value="">Select Topic</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="studyGoals">Study Goals</label>
+                    <textarea id="studyGoals" rows="5" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Attach Plan/Syllabus</label>
+                    <div class="attachment-options">
+                        <button type="button" id="planUploadBtn">Upload File</button>
+                        <button type="button" id="planCameraBtn">Use Camera</button>
+                        <input type="file" id="planFileInput" accept="image/*" multiple style="display: none;">
+                        <video id="planCameraView" style="display: none;" autoplay></video>
+                        <button type="button" id="planCaptureBtn" style="display: none;">Capture</button>
+                    </div>
+                    <div id="planAttachmentPreview"></div>
+                </div>
+
+                <button type="submit" class="submit-btn">Save Plan</button>
+            </form>
+        </div>
+
+        <div class="tab-content" id="resources">
+            <div class="resource-category">
+                <h3>Mnemonics</h3>
+                <div class="resource-item">
+                    <h4>Periodic Table Groups</h4>
+                    <p><strong>Group 1 (Alkali Metals):</strong> LiNa Ki Ruby Cse Friendship</p>
+                    <p>Li (Lithium), Na (Sodium), K (Potassium), Rb (Rubidium), Cs (Caesium), Fr (Francium)</p>
+                </div>
+                <div class="resource-item">
+                    <h4>Cranial Nerves</h4>
+                    <p><strong>On Old Olympus's Towering Tops, A Finn And German Viewed Some Hops</strong></p>
+                    <p>Olfactory, Optic, Oculomotor, Trochlear, Trigeminal, Abducens, Facial, Auditory, Glossopharyngeal, Vagus, Spinal Accessory, Hypoglossal</p>
+                </div>
+            </div>
+
+            <div class="resource-category">
+                <h3>Charts & Diagrams</h3>
+                <div class="resource-item">
+                    <h4>Electromagnetic Spectrum</h4>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/EM_Spectrum_Properties_edit.svg/1200px-EM_Spectrum_Properties_edit.svg.png" alt="EM Spectrum" style="max-width: 100%;">
+                </div>
+                <div class="resource-item">
+                    <h4>Human Digestive System</h4>
+                    <img src="https://www.visiblebody.com/hubfs/learn/assets/images/website/systems/digestive-system-overview.jpg" alt="Digestive System" style="max-width: 100%;">
+                </div>
+            </div>
+
+            <div class="resource-category">
+                <h3>Tricky Questions</h3>
+                <div class="resource-item">
+                    <h4>Physics</h4>
+                    <p><strong>Q:</strong> A particle moves along a circle of radius R with constant angular velocity ω. The magnitude of average acceleration during motion from θ = 0 to θ = π is?</p>
+                    <p><strong>A:</strong> (2√2 Rω²)/π</p>
+                </div>
+                <div class="resource-item">
+                    <h4>Chemistry</h4>
+                    <p><strong>Q:</strong> Which of the following will not give white precipitate with AgNO₃ solution?</p>
+                    <p><strong>A:</strong> [Co(NH₃)₅Cl]Cl₂ (Others like NaCl, KCl, [Co(NH₃)₄Cl₂]Cl do give white ppt)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="calculator">
+            <div id="calculator-container">
+                <div id="previous-display"></div>
+                <div id="calculator-display">0</div>
+                <div class="calculator">
+                    <button class="calculator-btn clear" data-all-clear>AC</button>
+                    <button class="calculator-btn" data-delete>DEL</button>
+                    <button class="calculator-btn operation" data-operation="√">√</button>
+                    <button class="calculator-btn operation" data-operation="^">^</button>
+                    
+                    <button class="calculator-btn" data-number="7">7</button>
+                    <button class="calculator-btn" data-number="8">8</button>
+                    <button class="calculator-btn" data-number="9">9</button>
+                    <button class="calculator-btn operation" data-operation="/">/</button>
+                    
+                    <button class="calculator-btn" data-number="4">4</button>
+                    <button class="calculator-btn" data-number="5">5</button>
+                    <button class="calculator-btn" data-number="6">6</button>
+                    <button class="calculator-btn operation" data-operation="*">×</button>
+                    
+                    <button class="calculator-btn" data-number="1">1</button>
+                    <button class="calculator-btn" data-number="2">2</button>
+                    <button class="calculator-btn" data-number="3">3</button>
+                    <button class="calculator-btn operation" data-operation="-">-</button>
+                    
+                    <button class="calculator-btn" data-number="0">0</button>
+                    <button class="calculator-btn" data-decimal>.</button>
+                    <button class="calculator-btn equals" data-equals>=</button>
+                    <button class="calculator-btn operation" data-operation="+">+</button>
+                    
+                    <button class="calculator-btn operation" data-operation="sin">sin</button>
+                    <button class="calculator-btn operation" data-operation="cos">cos</button>
+                    <button class="calculator-btn operation" data-operation="tan">tan</button>
+                    <button class="calculator-btn operation" data-operation="log">log</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="notes">
+            <div class="notes-controls">
+                <button id="generatePdfBtn">Generate PDF Notes</button>
+                <button id="clearNotesBtn">Clear All Notes</button>
+            </div>
+            <div class="notes-list" id="notesList">
+                <!-- Notes will be displayed here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Topics database (expand with all NCERT/JEE/NEET topics)
+        const topicsDB = {
+            physics: [
+                "Mechanics", "Thermodynamics", "Electromagnetism", 
+                "Optics", "Modern Physics", "Waves", "Electrostatics",
+                "Current Electricity", "Magnetic Effects", "EMI", "AC", "Semiconductors"
+            ],
+            chemistry: [
+                "Physical Chemistry", "Organic Chemistry", "Inorganic Chemistry",
+                "Chemical Bonding", "Thermodynamics", "Equilibrium", "Biomolecules",
+                "Polymers", "Coordination Compounds", "Metallurgy", "p-Block", "d-Block"
+            ],
+            mathematics: [
+                "Algebra", "Calculus", "Coordinate Geometry",
+                "Trigonometry", "Probability", "Vectors", "Matrices",
+                "Complex Numbers", "Differential Equations", "3D Geometry", "Statistics"
+            ],
+            biology: [
+                "Botany", "Zoology", "Cell Biology",
+                "Genetics", "Ecology", "Human Physiology", "Biotechnology",
+                "Plant Physiology", "Reproduction", "Evolution", "Human Health"
+            ]
+        };
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set current date
+            updateDateDisplay();
+            
+            // Initialize tabs
+            setupTabs();
+            
+            // Initialize forms
+            setupProgressForm();
+            setupPlanForm();
+            
+            // Initialize calculator
+            setupCalculator();
+            
+            // Initialize notes section
+            setupNotesSection();
+            
+            // Set up revision reminders
+            setInterval(checkReminders, 60000); // Check every minute
+            checkReminders();
+        });
+
+        function updateDateDisplay() {
+            const now = new Date();
+            document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+            });
+        }
+
+        function setupTabs() {
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(btn.dataset.tab).classList.add('active');
+                });
+            });
+        }
+
+        function setupProgressForm() {
+            const subjectSelect = document.getElementById('subject');
+            const topicSelect = document.getElementById('topic');
+            
+            subjectSelect.addEventListener('change', function() {
+                topicSelect.innerHTML = '<option value="">Select Topic</option>';
+                topicSelect.disabled = !this.value;
+                
+                if (this.value) {
+                    topicsDB[this.value].forEach(topic => {
+                        const option = document.createElement('option');
+                        option.value = topic.toLowerCase().replace(/\s+/g, '-');
+                        option.textContent = topic;
+                        topicSelect.appendChild(option);
+                    });
+                }
+            });
+
+            // Attachment handling
+            const uploadBtn = document.getElementById('uploadBtn');
+            const cameraBtn = document.getElementById('cameraBtn');
+            const fileInput = document.getElementById('fileInput');
+            const cameraView = document.getElementById('cameraView');
+            const captureBtn = document.getElementById('captureBtn');
+            const previewArea = document.getElementById('attachmentPreview');
+            
+            let attachments = [];
+            
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', function() {
+                Array.from(this.files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            attachments.push(e.target.result);
+                            displayAttachments();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            });
+            
+            cameraBtn.addEventListener('click', async function() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    cameraView.srcObject = stream;
+                    cameraView.style.display = 'block';
+                    captureBtn.style.display = 'block';
+                    cameraBtn.style.display = 'none';
+                } catch (err) {
+                    alert('Could not access camera: ' + err.message);
+                }
+            });
+            
+            captureBtn.addEventListener('click', function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = cameraView.videoWidth;
+                canvas.height = cameraView.videoHeight;
+                canvas.getContext('2d').drawImage(cameraView, 0, 0);
+                
+                attachments.push(canvas.toDataURL('image/jpeg'));
+                displayAttachments();
+                
+                // Stop camera
+                cameraView.srcObject.getTracks().forEach(track => track.stop());
+                cameraView.style.display = 'none';
+                captureBtn.style.display = 'none';
+                cameraBtn.style.display = 'block';
+            });
+            
+            function displayAttachments() {
+                previewArea.innerHTML = '';
+                attachments.forEach((att, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'attachment-thumbnail';
+                    
+                    const img = document.createElement('img');
+                    img.src = att;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '×';
+                    deleteBtn.onclick = () => {
+                        attachments.splice(index, 1);
+                        displayAttachments();
+                    };
+                    
+                    div.appendChild(img);
+                    div.appendChild(deleteBtn);
+                    previewArea.appendChild(div);
+                });
+            }
+
+            // Form submission
+            document.getElementById('progressForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const subject = subjectSelect.value;
+                const topic = topicSelect.value;
+                const learnings = document.getElementById('learnings').value;
+                const confidence = document.querySelector('input[name="confidence"]:checked').value;
+                
+                // Save to localStorage
+                const entry = {
+                    id: Date.now(),
+                    type: 'progress',
+                    date: new Date().toISOString(),
+                    subject,
+                    topic,
+                    learnings,
+                    confidence,
+                    attachments
+                };
+                
+                saveEntry(entry);
+                
+                alert('Progress saved successfully!');
+                this.reset();
+                attachments = [];
+                previewArea.innerHTML = '';
+                
+                // Refresh notes display
+                displayNotes();
+            });
+        }
+
+        function setupPlanForm() {
+            const subjectSelect = document.getElementById('planSubject');
+            const topicSelect = document.getElementById('planTopic');
+            
+            subjectSelect.addEventListener('change', function() {
+                topicSelect.innerHTML = '<option value="">Select Topic</option>';
+                topicSelect.disabled = !this.value;
+                
+                if (this.value) {
+                    topicsDB[this.value].forEach(topic => {
+                        const option = document.createElement('option');
+                        option.value = topic.toLowerCase().replace(/\s+/g, '-');
+                        option.textContent = topic;
+                        topicSelect.appendChild(option);
+                    });
+                }
+            });
+
+            // Attachment handling
+            const uploadBtn = document.getElementById('planUploadBtn');
+            const cameraBtn = document.getElementById('planCameraBtn');
+            const fileInput = document.getElementById('planFileInput');
+            const cameraView = document.getElementById('planCameraView');
+            const captureBtn = document.getElementById('planCaptureBtn');
+            const previewArea = document.getElementById('planAttachmentPreview');
+            
+            let attachments = [];
+            
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            
+            fileInput.addEventListener('change', function() {
+                Array.from(this.files).forEach(file => {
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            attachments.push(e.target.result);
+                            displayAttachments();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            });
+            
+            cameraBtn.addEventListener('click', async function() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    cameraView.srcObject = stream;
+                    cameraView.style.display = 'block';
+                    captureBtn.style.display = 'block';
+                    cameraBtn.style.display = 'none';
+                } catch (err) {
+                    alert('Could not access camera: ' + err.message);
+                }
+            });
+            
+            captureBtn.addEventListener('click', function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = cameraView.videoWidth;
+                canvas.height = cameraView.videoHeight;
+                canvas.getContext('2d').drawImage(cameraView, 0, 0);
+                
+                attachments.push(canvas.toDataURL('image/jpeg'));
+                displayAttachments();
+                
+                // Stop camera
+                cameraView.srcObject.getTracks().forEach(track => track.stop());
+                cameraView.style.display = 'none';
+                captureBtn.style.display = 'none';
+                cameraBtn.style.display = 'block';
+            });
+            
+            function displayAttachments() {
+                previewArea.innerHTML = '';
+                attachments.forEach((att, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'attachment-thumbnail';
+                    
+                    const img = document.createElement('img');
+                    img.src = att;
+                    
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.textContent = '×';
+                    deleteBtn.onclick = () => {
+                        attachments.splice(index, 1);
+                        displayAttachments();
+                    };
+                    
+                    div.appendChild(img);
+                    div.appendChild(deleteBtn);
+                    previewArea.appendChild(div);
+                });
+            }
+
+            // Form submission
+            document.getElementById('planForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const subject = subjectSelect.value;
+                const topic = topicSelect.value;
+                const studyGoals = document.getElementById('studyGoals').value;
+                
+                // Save to localStorage
+                const entry = {
+                    id: Date.now(),
+                    type: 'plan',
+                    date: new Date().toISOString(),
+                    subject,
+                    topic,
+                    studyGoals,
+                    attachments
+                };
+                
+                saveEntry(entry);
+                
+                alert('Study plan saved successfully!');
+                this.reset();
+                attachments = [];
+                previewArea.innerHTML = '';
+                
+                // Refresh notes display
+                displayNotes();
+            });
+        }
+
+        function saveEntry(entry) {
+            let entries = JSON.parse(localStorage.getItem('studyEntries')) || [];
+            entries.push(entry);
+            localStorage.setItem('studyEntries', JSON.stringify(entries));
+        }
+
+        function setupNotesSection() {
+            document.getElementById('generatePdfBtn').addEventListener('click', generatePDF);
+            document.getElementById('clearNotesBtn').addEventListener('click', clearAllNotes);
+            displayNotes();
+        }
+
+        function displayNotes() {
+            const notesList = document.getElementById('notesList');
+            notesList.innerHTML = '';
+            
+            const entries = JSON.parse(localStorage.getItem('studyEntries')) || [];
+            
+            if (entries.length === 0) {
+                notesList.innerHTML = '<p>No notes found. Start by adding your progress or plans.</p>';
+                return;
+            }
+            
+            // Sort by date (newest first)
+            entries.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            entries.forEach(entry => {
+                const noteCard = document.createElement('div');
+                noteCard.className = 'note-card';
+                
+                const noteDate = document.createElement('div');
+                noteDate.className = 'note-date';
+                noteDate.textContent = new Date(entry.date).toLocaleString();
+                
+                const noteType = document.createElement('div');
+                noteType.className = 'note-subject';
+                noteType.textContent = entry.type === 'progress' ? 'Progress' : 'Plan';
+                
+                const noteSubject = document.createElement('div');
+                noteSubject.className = 'note-subject';
+                noteSubject.textContent = entry.subject.charAt(0).toUpperCase() + entry.subject.slice(1);
+                
+                const noteTopic = document.createElement('div');
+                noteTopic.className = 'note-topic';
+                noteTopic.textContent = entry.topic;
+                
+                const noteContent = document.createElement('div');
+                noteContent.className = 'note-content';
+                
+                if (entry.type === 'progress') {
+                    const learnings = document.createElement('p');
+                    learnings.textContent = entry.learnings;
+                    
+                    const confidence = document.createElement('p');
+                    confidence.innerHTML = `<strong>Confidence:</strong> ${'★'.repeat(entry.confidence)}`;
+                    
+                    noteContent.appendChild(learnings);
+                    noteContent.appendChild(confidence);
+                } else {
+                    const goals = document.createElement('p');
+                    goals.textContent = entry.studyGoals;
+                    noteContent.appendChild(goals);
+                }
+                
+                // Add attachments if available
+                if (entry.attachments && entry.attachments.length > 0) {
+                    const attachmentsDiv = document.createElement('div');
+                    attachmentsDiv.className = 'note-attachments';
+                    
+                    entry.attachments.forEach(att => {
+                        const img = document.createElement('img');
+                        img.src = att;
+                        attachmentsDiv.appendChild(img);
+                    });
+                    
+                    noteContent.appendChild(attachmentsDiv);
+                }
+                
+                noteCard.appendChild(noteDate);
+                noteCard.appendChild(noteType);
+                noteCard.appendChild(noteSubject);
+                noteCard.appendChild(noteTopic);
+                noteCard.appendChild(noteContent);
+                
+                notesList.appendChild(noteCard);
+            });
+        }
+
+        function clearAllNotes() {
+            if (confirm('Are you sure you want to delete all notes? This cannot be undone.')) {
+                localStorage.removeItem('studyEntries');
+                displayNotes();
+            }
+        }
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Get all entries from localStorage
+            const entries = JSON.parse(localStorage.getItem('studyEntries')) || [];
+            
+            if (entries.length === 0) {
+                alert('No study entries found to generate PDF');
+                return;
+            }
+            
+            // Group by subject
+            const subjects = {};
+            entries.forEach(entry => {
+                if (!subjects[entry.subject]) {
+                    subjects[entry.subject] = [];
+                }
+                subjects[entry.subject].push(entry);
+            });
+            
+            // Add content for each subject
+            Object.entries(subjects).forEach(([subject, entries]) => {
+                doc.addPage();
+                doc.setFontSize(18);
+                doc.text(subject.charAt(0).toUpperCase() + subject.slice(1), 10, 10);
+                doc.setFontSize(12);
+                
+                let y = 20;
+                entries.forEach((entry, index) => {
+                    doc.text(`Date: ${new Date(entry.date).toLocaleDateString()}`, 10, y);
+                    y += 7;
+                    doc.text(`Topic: ${entry.topic}`, 10, y);
+                    y += 7;
+                    
+                    if (entry.type === 'progress') {
+                        doc.text(`Confidence: ${'★'.repeat(entry.confidence)}`, 10, y);
+                        y += 7;
+                    }
+                    
+                    // Split content into multiple lines if needed
+                    const content = entry.type === 'progress' ? entry.learnings : entry.studyGoals;
+                    const contentLines = doc.splitTextToSize(content, 180);
+                    
+                    doc.text(`${entry.type === 'progress' ? 'Learnings:' : 'Study Goals:'}`, 10, y);
+                    y += 7;
+                    contentLines.forEach(line => {
+                        doc.text(line, 15, y);
+                        y += 7;
+                    });
+                    
+                    // Add images if available
+                    if (entry.attachments && entry.attachments.length > 0) {
+                        y += 5;
+                        doc.text('Attachments:', 10, y);
+                        y += 7;
+                        
+                        entry.attachments.forEach((imgSrc, imgIndex) => {
+                            if (y > 250) { // Page break if near bottom
+                                doc.addPage();
+                                y = 20;
+                            }
+                            
+                            try {
+                                const img = new Image();
+                                img.src = imgSrc;
+                                
+                                // Add image to PDF (scaled to fit)
+                                const ratio = img.width / img.height;
+                                const width = 100;
+                                const height = width / ratio;
+                                
+                                doc.addImage(imgSrc, 'JPEG', 10, y, width, height);
+                                y += height + 5;
+                            } catch (e) {
+                                console.error('Error adding image:', e);
+                            }
+                        });
+                    }
+                    
+                    // Add space between entries
+                    y += 10;
+                    
+                    // Page break if needed
+                    if (y > 280 && index < entries.length - 1) {
+                        doc.addPage();
+                        y = 20;
+                    }
+                });
+            });
+            
+            // Save the PDF
+            doc.save('neet-jee-study-notes.pdf');
+        }
+
+        function checkReminders() {
+            const now = new Date();
+            const hours = now.getHours();
+            const day = now.getDay(); // 0 = Sunday
+            
+            // Check for morning revision (8-10 AM)
+            if (hours >= 8 && hours <= 10) {
+                const lastOpened = localStorage.getItem('lastMorningReminder');
+                const today = now.toDateString();
+                
+                if (!lastOpened || lastOpened !== today) {
+                    // Check if there were entries yesterday
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+                    
+                    const entries = JSON.parse(localStorage.getItem('studyEntries')) || [];
+                    const yesterdayEntries = entries.filter(entry => 
+                        entry.date.split('T')[0] === yesterdayStr
+                    );
+                    
+                    if (yesterdayEntries.length > 0) {
+                        alert(`Time to revise! You studied ${yesterdayEntries.length} topics yesterday.`);
+                        localStorage.setItem('lastMorningReminder', today);
+                    }
+                }
+            }
+            
+           // Check for weekend revision (Saturday/Sunday morning)
+if ((day === 0 || day === 6) && hours >= 8 && hours <= 10) {
+    const lastWeeklyReminder = localStorage.getItem('lastWeeklyReminder');
+    const thisWeek = now.getFullYear() + '-' + getWeekNumber(now);
+    
+    if (!lastWeeklyReminder || lastWeeklyReminder !== thisWeek) {
+        const entries = JSON.parse(localStorage.getItem('studyEntries')) || [];
+        
+        // Get entries from the current week (Monday to Sunday)
+        const lastWeekEntries = entries.filter(entry => {
+            const entryDate = new Date(entry.date);
+            return isSameWeek(entryDate, now);
+        });
+        
+        if (lastWeekEntries.length > 0) {
+            // Group entries by subject for better organization
+            const subjects = {};
+            lastWeekEntries.forEach(entry => {
+                if (!subjects[entry.subject]) {
+                    subjects[entry.subject] = [];
+                }
+                subjects[entry.subject].push(entry);
+            });
+            
+            // Create a more informative notification message
+            let message = `Weekly revision time! You studied ${lastWeekEntries.length} topics this week:\n`;
+            
+            Object.entries(subjects).forEach(([subject, entries]) => {
+                message += `\n${subject.charAt(0).toUpperCase() + subject.slice(1)}: ${entries.length} topics`;
+            });
+            
+            message += "\n\nTake time to review these topics today!";
+            
+            alert(message);
+            localStorage.setItem('lastWeeklyReminder', thisWeek);
+            
+            // Optional: Trigger PDF generation automatically
+            // generateWeeklyRevisionPDF(lastWeekEntries);
+        }
+    }
+}
+
+// Helper function to generate weekly revision PDF (optional)
+function generateWeeklyRevisionPDF(entries) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Weekly Revision Summary', 10, 10);
+    doc.setFontSize(12);
+    
+    let y = 20;
+    
+    // Group by subject
+    const subjects = {};
+    entries.forEach(entry => {
+        if (!subjects[entry.subject]) {
+            subjects[entry.subject] = [];
+        }
+        subjects[entry.subject].push(entry);
+    });
+    
+    // Add content for each subject
+    Object.entries(subjects).forEach(([subject, entries]) => {
+        doc.text(`${subject.charAt(0).toUpperCase() + subject.slice(1)}`, 10, y);
+        y += 10;
+        
+        entries.forEach(entry => {
+            doc.text(`- ${entry.topic} (Confidence: ${'★'.repeat(entry.confidence || 3)})`, 15, y);
+            y += 7;
+            
+            if (y > 280) {
+                doc.addPage();
+                y = 20;
+            }
+        });
+        
+        y += 5;
+    });
+    
+    doc.save('weekly-revision-summary.pdf');
+}
+
+        function getWeekNumber(date) {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+            const week1 = new Date(d.getFullYear(), 0, 4);
+            return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+        }
+
+        function isSameWeek(d1, d2) {
+            return d1.getFullYear() === d2.getFullYear() && 
+                   getWeekNumber(d1) === getWeekNumber(d2);
+        }
+
+        // Calculator Implementation
+        class Calculator {
+            constructor() {
+                this.currentInput = '0';
+                this.previousInput = '';
+                this.operation = undefined;
+                this.resetScreen = false;
+            }
+
+            appendNumber(number) {
+                if (this.currentInput === '0' || this.resetScreen) {
+                    this.currentInput = number;
+                    this.resetScreen = false;
+                } else {
+                    this.currentInput += number;
+                }
+            }
+
+            appendDecimal() {
+                if (this.resetScreen) {
+                    this.currentInput = '0.';
+                    this.resetScreen = false;
+                    return;
+                }
+                if (!this.currentInput.includes('.')) {
+                    this.currentInput += '.';
+                }
+            }
+
+            handleOperation(op) {
+                if (this.currentInput === '') return;
+                if (this.previousInput !== '') {
+                    this.compute();
+                }
+                this.operation = op;
+                this.previousInput = this.currentInput;
+                this.currentInput = '';
+            }
+
+            compute() {
+                let computation;
+                const prev = parseFloat(this.previousInput);
+                const current = parseFloat(this.currentInput);
+                if (isNaN(prev)) return;
+
+                switch (this.operation) {
+                    case '+':
+                        computation = prev + current;
+                        break;
+                    case '-':
+                        computation = prev - current;
+                        break;
+                    case '*':
+                        computation = prev * current;
+                        break;
+                    case '/':
+                        computation = prev / current;
+                        break;
+                    case '^':
+                        computation = Math.pow(prev, current);
+                        break;
+                    case '√':
+                        computation = Math.sqrt(prev);
+                        break;
+                    case 'sin':
+                        computation = Math.sin(prev);
+                        break;
+                    case 'cos':
+                        computation = Math.cos(prev);
+                        break;
+                    case 'tan':
+                        computation = Math.tan(prev);
+                        break;
+                    case 'log':
+                        computation = Math.log10(prev);
+                        break;
+                    case 'ln':
+                        computation = Math.log(prev);
+                        break;
+                    default:
+                        return;
+                }
+
+                this.currentInput = computation.toString();
+                this.operation = undefined;
+                this.previousInput = '';
+            }
+
+            clear() {
+                this.currentInput = '0';
+                this.previousInput = '';
+                this.operation = undefined;
+            }
+
+            delete() {
+                this.currentInput = this.currentInput.toString().slice(0, -1);
+                if (this.currentInput === '') {
+                    this.currentInput = '0';
+                }
+            }
+
+            updateDisplay() {
+                const currentDisplay = document.getElementById('calculator-display');
+                const previousDisplay = document.getElementById('previous-display');
+                
+                currentDisplay.textContent = this.currentInput;
+                if (this.operation != null) {
+                    previousDisplay.textContent = `${this.previousInput} ${this.operation}`;
+                } else {
+                    previousDisplay.textContent = '';
+                }
+            }
+        }
+
+        function setupCalculator() {
+            const calculator = new Calculator();
+            const numberButtons = document.querySelectorAll('[data-number]');
+            const operationButtons = document.querySelectorAll('[data-operation]');
+            const equalsButton = document.querySelector('[data-equals]');
+            const deleteButton = document.querySelector('[data-delete]');
+            const allClearButton = document.querySelector('[data-all-clear]');
+            const decimalButton = document.querySelector('[data-decimal]');
+
+            numberButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    calculator.appendNumber(button.textContent);
+                    calculator.updateDisplay();
+                });
+            });
+
+            operationButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    calculator.handleOperation(button.textContent);
+                    calculator.updateDisplay();
+                });
+            });
+
+            equalsButton.addEventListener('click', () => {
+                calculator.compute();
+                calculator.updateDisplay();
+            });
+
+            allClearButton.addEventListener('click', () => {
+                calculator.clear();
+                calculator.updateDisplay();
+            });
+
+            deleteButton.addEventListener('click', () => {
+                calculator.delete();
+                calculator.updateDisplay();
+            });
+
+            decimalButton.addEventListener('click', () => {
+                calculator.appendDecimal();
+                calculator.updateDisplay();
+            });
+        }
+    </script>
+</body>
+</html>
