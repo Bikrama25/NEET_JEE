@@ -102,3 +102,724 @@
     <script src="pdf-generator.js"></script>
 </body>
 </html>
+
+// Topics database (simplified - expand with all NCERT/JEE/NEET topics)
+const topicsDB = {
+    physics: [
+        "Mechanics", "Thermodynamics", "Electromagnetism", 
+        "Optics", "Modern Physics", "Waves", "Electrostatics"
+    ],
+    chemistry: [
+        "Physical Chemistry", "Organic Chemistry", "Inorganic Chemistry",
+        "Chemical Bonding", "Thermodynamics", "Equilibrium", "Biomolecules"
+    ],
+    mathematics: [
+        "Algebra", "Calculus", "Coordinate Geometry",
+        "Trigonometry", "Probability", "Vectors", "Matrices"
+    ],
+    biology: [
+        "Botany", "Zoology", "Cell Biology",
+        "Genetics", "Ecology", "Human Physiology", "Biotechnology"
+    ]
+};
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', function() {
+    // Set current date
+    const now = new Date();
+    document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    // Tab switching
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(btn.dataset.tab).classList.add('active');
+        });
+    });
+
+    // Subject selection
+    const subjectSelect = document.getElementById('subject');
+    const topicSelect = document.getElementById('topic');
+    
+    subjectSelect.addEventListener('change', function() {
+        topicSelect.innerHTML = '<option value="">Select Topic</option>';
+        topicSelect.disabled = !this.value;
+        
+        if (this.value) {
+            topicsDB[this.value].forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic.toLowerCase().replace(/\s+/g, '-');
+                option.textContent = topic;
+                topicSelect.appendChild(option);
+            });
+        }
+    });
+
+    // Attachment handling
+    const uploadBtn = document.getElementById('uploadBtn');
+    const cameraBtn = document.getElementById('cameraBtn');
+    const fileInput = document.getElementById('fileInput');
+    const cameraView = document.getElementById('cameraView');
+    const captureBtn = document.getElementById('captureBtn');
+    const previewArea = document.getElementById('attachmentPreview');
+    
+    let attachments = [];
+    
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    
+    fileInput.addEventListener('change', function() {
+        Array.from(this.files).forEach(file => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    attachments.push(e.target.result);
+                    displayAttachments();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+    
+    cameraBtn.addEventListener('click', async function() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            cameraView.srcObject = stream;
+            cameraView.style.display = 'block';
+            captureBtn.style.display = 'block';
+            cameraBtn.style.display = 'none';
+        } catch (err) {
+            alert('Could not access camera: ' + err.message);
+        }
+    });
+    
+    captureBtn.addEventListener('click', function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = cameraView.videoWidth;
+        canvas.height = cameraView.videoHeight;
+        canvas.getContext('2d').drawImage(cameraView, 0, 0);
+        
+        attachments.push(canvas.toDataURL('image/jpeg'));
+        displayAttachments();
+        
+        // Stop camera
+        cameraView.srcObject.getTracks().forEach(track => track.stop());
+        cameraView.style.display = 'none';
+        captureBtn.style.display = 'none';
+        cameraBtn.style.display = 'block';
+    });
+    
+    function displayAttachments() {
+        previewArea.innerHTML = '';
+        attachments.forEach((att, index) => {
+            const div = document.createElement('div');
+            div.className = 'attachment-thumbnail';
+            
+            const img = document.createElement('img');
+            img.src = att;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '×';
+            deleteBtn.onclick = () => {
+                attachments.splice(index, 1);
+                displayAttachments();
+            };
+            
+            div.appendChild(img);
+            div.appendChild(deleteBtn);
+            previewArea.appendChild(div);
+        });
+    }
+
+    // Form submission
+    document.getElementById('progressForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const subject = subjectSelect.value;
+        const topic = topicSelect.value;
+        const learnings = document.getElementById('learnings').value;
+        const confidence = document.querySelector('input[name="confidence"]:checked').value;
+        
+        // In a real app, save to Firebase/localStorage
+        const entry = {
+            date: new Date().toISOString(),
+            subject,
+            topic,
+            learnings,
+            confidence,
+            attachments
+        };
+        
+        // For demo, store in localStorage
+        let entries = JSON.parse(localStorage.getItem('studyEntries') || [];
+        entries.push(entry);
+        localStorage.setItem('studyEntries', JSON.stringify(entries));
+        
+        alert('Progress saved successfully!');
+        this.reset();
+        attachments = [];
+        previewArea.innerHTML = '';
+    });
+
+    // Set up revision reminders
+    setInterval(checkReminders, 60000); // Check every minute
+    checkReminders();
+});
+
+function checkReminders() {
+    const now = new Date();
+    const hours = now.getHours();
+    const day = now.getDay(); // 0 = Sunday
+    
+    // Check for morning revision (8-10 AM)
+    if (hours >= 8 && hours <= 10) {
+        const lastOpened = localStorage.getItem('lastMorningReminder');
+        const today = now.toDateString();
+        
+        if (!lastOpened || lastOpened !== today) {
+            // Check if there were entries yesterday
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+            
+            const entries = JSON.parse(localStorage.getItem('studyEntries') || [];
+            const yesterdayEntries = entries.filter(entry => 
+                entry.date.split('T')[0] === yesterdayStr
+            );
+            
+            if (yesterdayEntries.length > 0) {
+                alert(`Time to revise! You studied ${yesterdayEntries.length} topics yesterday.`);
+                localStorage.setItem('lastMorningReminder', today);
+            }
+        }
+    }
+    
+    // Check for weekend revision (Saturday/Sunday morning)
+    if ((day === 0 || day === 6) && hours >= 8 && hours <= 10) {
+        const lastWeeklyReminder = localStorage.getItem('lastWeeklyReminder');
+        const thisWeek = now.getFullYear() + '-' + now.getWeek(); // Need week number function
+        
+        if (!lastWeeklyReminder || lastWeeklyReminder !== thisWeek) {
+            const entries = JSON.parse(localStorage.getItem('studyEntries') || [];
+            const lastWeekEntries = entries.filter(entry => {
+                const entryDate = new Date(entry.date);
+                return isSameWeek(entryDate, now);
+            });
+            
+            if (lastWeekEntries.length > 0) {
+                alert(`Weekly revision time! Review ${lastWeekEntries.length} topics from this week.`);
+                localStorage.setItem('lastWeeklyReminder', thisWeek);
+            }
+        }
+    }
+}
+
+// Helper function to get week number
+Date.prototype.getWeek = function() {
+    const date = new Date(this.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+};
+
+function isSameWeek(d1, d2) {
+    return d1.getFullYear() === d2.getFullYear() && 
+           d1.getWeek() === d2.getWeek();
+}
+
+class Calculator {
+    constructor() {
+        this.currentInput = '0';
+        this.previousInput = '';
+        this.operation = undefined;
+        this.resetScreen = false;
+    }
+
+    appendNumber(number) {
+        if (this.currentInput === '0' || this.resetScreen) {
+            this.currentInput = number;
+            this.resetScreen = false;
+        } else {
+            this.currentInput += number;
+        }
+    }
+
+    appendDecimal() {
+        if (this.resetScreen) {
+            this.currentInput = '0.';
+            this.resetScreen = false;
+            return;
+        }
+        if (!this.currentInput.includes('.')) {
+            this.currentInput += '.';
+        }
+    }
+
+    handleOperation(op) {
+        if (this.currentInput === '') return;
+        if (this.previousInput !== '') {
+            this.compute();
+        }
+        this.operation = op;
+        this.previousInput = this.currentInput;
+        this.currentInput = '';
+    }
+
+    compute() {
+        let computation;
+        const prev = parseFloat(this.previousInput);
+        const current = parseFloat(this.currentInput);
+        if (isNaN(prev) return;
+
+        switch (this.operation) {
+            case '+':
+                computation = prev + current;
+                break;
+            case '-':
+                computation = prev - current;
+                break;
+            case '*':
+                computation = prev * current;
+                break;
+            case '/':
+                computation = prev / current;
+                break;
+            case '^':
+                computation = Math.pow(prev, current);
+                break;
+            case '√':
+                computation = Math.sqrt(prev);
+                break;
+            case 'sin':
+                computation = Math.sin(prev);
+                break;
+            case 'cos':
+                computation = Math.cos(prev);
+                break;
+            case 'tan':
+                computation = Math.tan(prev);
+                break;
+            case 'log':
+                computation = Math.log10(prev);
+                break;
+            case 'ln':
+                computation = Math.log(prev);
+                break;
+            default:
+                return;
+        }
+
+        this.currentInput = computation.toString();
+        this.operation = undefined;
+        this.previousInput = '';
+    }
+
+    clear() {
+        this.currentInput = '0';
+        this.previousInput = '';
+        this.operation = undefined;
+    }
+
+    delete() {
+        this.currentInput = this.currentInput.toString().slice(0, -1);
+        if (this.currentInput === '') {
+            this.currentInput = '0';
+        }
+    }
+
+    updateDisplay() {
+        const currentDisplay = document.getElementById('calculator-display');
+        const previousDisplay = document.getElementById('previous-display');
+        
+        currentDisplay.textContent = this.currentInput;
+        if (this.operation != null) {
+            previousDisplay.textContent = `${this.previousInput} ${this.operation}`;
+        } else {
+            previousDisplay.textContent = '';
+        }
+    }
+}
+
+// Initialize calculator
+const calculator = new Calculator();
+const numberButtons = document.querySelectorAll('[data-number]');
+const operationButtons = document.querySelectorAll('[data-operation]');
+const equalsButton = document.querySelector('[data-equals]');
+const deleteButton = document.querySelector('[data-delete]');
+const allClearButton = document.querySelector('[data-all-clear]');
+const decimalButton = document.querySelector('[data-decimal]');
+
+numberButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        calculator.appendNumber(button.textContent);
+        calculator.updateDisplay();
+    });
+});
+
+operationButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        calculator.handleOperation(button.textContent);
+        calculator.updateDisplay();
+    });
+});
+
+equalsButton.addEventListener('click', () => {
+    calculator.compute();
+    calculator.updateDisplay();
+});
+
+allClearButton.addEventListener('click', () => {
+    calculator.clear();
+    calculator.updateDisplay();
+});
+
+deleteButton.addEventListener('click', () => {
+    calculator.delete();
+    calculator.updateDisplay();
+});
+
+decimalButton.addEventListener('click', () => {
+    calculator.appendDecimal();
+    calculator.updateDisplay();
+});
+
+        function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // Get all entries from localStorage
+    const entries = JSON.parse(localStorage.getItem('studyEntries')) || [];
+    
+    if (entries.length === 0) {
+        alert('No study entries found to generate PDF');
+        return;
+    }
+    
+    // Group by subject
+    const subjects = {};
+    entries.forEach(entry => {
+        if (!subjects[entry.subject]) {
+            subjects[entry.subject] = [];
+        }
+        subjects[entry.subject].push(entry);
+    });
+    
+    // Add content for each subject
+    Object.entries(subjects).forEach(([subject, entries]) => {
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text(subject.charAt(0).toUpperCase() + subject.slice(1), 10, 10);
+        doc.setFontSize(12);
+        
+        let y = 20;
+        entries.forEach((entry, index) => {
+            doc.text(`Date: ${new Date(entry.date).toLocaleDateString()}`, 10, y);
+            y += 7;
+            doc.text(`Topic: ${entry.topic}`, 10, y);
+            y += 7;
+            doc.text(`Confidence: ${'★'.repeat(entry.confidence)}`, 10, y);
+            y += 7;
+            
+            // Split learnings into multiple lines if needed
+            const learningsLines = doc.splitTextToSize(entry.learnings, 180);
+            doc.text('Learnings:', 10, y);
+            y += 7;
+            learningsLines.forEach(line => {
+                doc.text(line, 15, y);
+                y += 7;
+            });
+            
+            // Add images if available
+            if (entry.attachments && entry.attachments.length > 0) {
+                y += 5;
+                doc.text('Attachments:', 10, y);
+                y += 7;
+                
+                entry.attachments.forEach((imgSrc, imgIndex) => {
+                    if (y > 250) { // Page break if near bottom
+                        doc.addPage();
+                        y = 20;
+                    }
+                    
+                    try {
+                        const img = new Image();
+                        img.src = imgSrc;
+                        
+                        // Add image to PDF (scaled to fit)
+                        const ratio = img.width / img.height;
+                        const width = 100;
+                        const height = width / ratio;
+                        
+                        doc.addImage(imgSrc, 'JPEG', 10, y, width, height);
+                        y += height + 5;
+                    } catch (e) {
+                        console.error('Error adding image:', e);
+                    }
+                });
+            }
+            
+            // Add space between entries
+            y += 10;
+            
+            // Page break if needed
+            if (y > 280 && index < entries.length - 1) {
+                doc.addPage();
+                y = 20;
+            }
+        });
+    });
+    
+    // Save the PDF
+    doc.save('neet-jee-study-notes.pdf');
+}
+
+// Add event listener to PDF generation button
+document.getElementById('generatePdfBtn').addEventListener('click', generatePDF);
+
+                /* Base Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f7fa;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.date-display {
+    color: #7f8c8d;
+    font-size: 1.1em;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: #7f8c8d;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s;
+}
+
+.tab-btn.active {
+    color: #3498db;
+    border-bottom-color: #3498db;
+    font-weight: bold;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Forms */
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+select, textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.confidence-rating {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.confidence-rating input[type="radio"] {
+    display: none;
+}
+
+.confidence-rating label {
+    display: inline-block;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    background-color: #ecf0f1;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.confidence-rating input[type="radio"]:checked + label {
+    background-color: #3498db;
+    color: white;
+}
+
+.attachment-options {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+button {
+    padding: 10px 15px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+#attachmentPreview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.attachment-thumbnail {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.attachment-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.attachment-thumbnail button {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background-color: rgba(231, 76, 60, 0.8);
+    border-radius: 50%;
+    font-size: 12px;
+    line-height: 20px;
+}
+
+/* Calculator Styles */
+#calculator {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    max-width: 300px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #2c3e50;
+    border-radius: 10px;
+}
+
+#calculator-display {
+    grid-column: span 4;
+    padding: 10px;
+    text-align: right;
+    background-color: #ecf0f1;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-size: 24px;
+    height: 40px;
+    overflow: hidden;
+}
+
+#previous-display {
+    grid-column: span 4;
+    text-align: right;
+    color: #bdc3c7;
+    height: 20px;
+    font-size: 14px;
+}
+
+.calculator-btn {
+    padding: 15px;
+    font-size: 18px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #34495e;
+    color: white;
+}
+
+.calculator-btn.operation {
+    background-color: #3498db;
+}
+
+.calculator-btn.equals {
+    background-color: #2ecc71;
+    grid-column: span 2;
+}
+
+.calculator-btn.clear {
+    background-color: #e74c3c;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .tabs {
+        overflow-x: auto;
+    }
+    
+    .tab-btn {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+}
